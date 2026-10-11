@@ -1,11 +1,18 @@
+using Unity.Multiplayer.PlayMode;
 using UnityEngine;
 using UnityEngine.InputSystem;
+
+public enum PlayerState
+{
+    Normal,
+    PickUp,
+}
 
 public class PlayerController : MonoBehaviour
 {
     [SerializeField] private Animator animator;
     [SerializeField] private Transform cameraTransform;
-    
+
     [Header("이동 설정")]
     [SerializeField] private float walkSpeed = 3f;
     [SerializeField] private float runSpeed = 6f;
@@ -16,23 +23,33 @@ public class PlayerController : MonoBehaviour
 
     private CharacterController controller;
     private float verticalVelocity;
+    private PlayerState currentState = PlayerState.Normal;
 
-
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
     }
 
-    // Update is called once per frame
     void Update()
     {
         Keyboard keyboard = Keyboard.current;
 
-        if(keyboard == null)
+        if (keyboard == null)
         {
             return;
         }
+
+        //상태와 관계없이 중력은 계속 적용한다.
+        ApplyGravity();
+
+        //Normal 상태가 아니면 이동 입력을 받지 않는다.
+        if (currentState != PlayerState.Normal) return;
+
+        HandleMovement(keyboard);
+    }
+
+    private void HandleMovement(Keyboard keyboard)
+    {
         //1. WASD 입력
         Vector2 input = Vector2.zero;
 
@@ -44,7 +61,6 @@ public class PlayerController : MonoBehaviour
             input.y -= 1f;
         if (keyboard.wKey.isPressed)
             input.y += 1f;
-
         input = Vector2.ClampMagnitude(input, 1f);
 
         //2. 카메라의 앞쪽과 오른쪽 방향
@@ -77,7 +93,7 @@ public class PlayerController : MonoBehaviour
         }
 
         //7. 기본 중력 설정
-        if(controller.isGrounded && verticalVelocity < 0f)
+        if (controller.isGrounded && verticalVelocity < 0f)
         {
             verticalVelocity = -2f;
         }
@@ -97,5 +113,34 @@ public class PlayerController : MonoBehaviour
         }
 
         animator.SetFloat("speed", animationSpeed, 0.1f, Time.deltaTime);
+    }
+
+
+
+    private void ApplyGravity()
+    {
+        //7. 기본 중력 설정
+        if (controller.isGrounded && verticalVelocity < 0f)
+        {
+            verticalVelocity = -2f;
+        }
+        else
+        {
+            verticalVelocity += gravity * Time.deltaTime;
+        }
+
+        controller.Move(Vector3.up * verticalVelocity * Time.deltaTime);
+    }
+
+    public void ChangeState(PlayerState newState)
+    {
+        currentState = newState;
+
+        if (currentState != PlayerState.Normal)
+        {
+            animator.SetFloat("speed", 0);
+        }
+
+        Debug.Log("현재 상태 : " + currentState);
     }
 }
